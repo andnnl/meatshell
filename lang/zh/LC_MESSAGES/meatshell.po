@@ -497,3 +497,6 @@ msgstr "已复制"
 
 msgid "Clear sort"
 msgstr "清除排序"
+
+msgid "Search by name or host..."
+msgstr "按名称或主机搜索..."

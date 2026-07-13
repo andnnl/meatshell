@@ -374,9 +374,7 @@ export component Welcome inherits Rectangle {
                             }
                         }
                         if root.search-query == "" : Text {
-                            text: root.lang-en
-                                ? "Search by name or host..."
-                                : "按名称或主机搜索...";
+                            text: @tr("Search by name or host...");
                             font-family: Theme.ui-font-family;
                             font-size: Theme.fs-sm;
                             color: Theme.text-muted;

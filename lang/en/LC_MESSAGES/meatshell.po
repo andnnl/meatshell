@@ -497,3 +497,6 @@ msgstr "Copied"
 
 msgid "Clear sort"
 msgstr "Clear sort"
+
+msgid "Search by name or host..."
+msgstr "Search by name or host..."
