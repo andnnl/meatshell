@@ -1265,6 +1265,19 @@ pub fn run() -> Result<()> {
         sftp_follow_cd.clone(),
     );
 
+    // Host search filter: re-sync the session list whenever the query changes.
+    {
+        let weak = window.as_weak();
+        let store = store.clone();
+        let sessions_model = sessions_model.clone();
+        window.on_host_search_changed(move |query| {
+            let Some(w) = weak.upgrade() else { return };
+            let q = query.to_string();
+            w.set_host_search_query(q.clone().into());
+            sync_sessions_to_model_with_filter(&store.borrow(), &sessions_model, &q);
+        });
+    }
+
     // Recompute the sidebar whenever the active tab changes (fired from Slint's
     // `changed active-tab-id`).
     {
@@ -2434,27 +2447,47 @@ fn jump_candidates(
 }
 
 fn sync_sessions_to_model(store: &ConfigStore, model: &VecModel<SessionInfo>) {
-    // Group sessions by their `group` (named groups alphabetically, ungrouped
-    // last), then by name within each group, and tag the first row of every
-    // group with a header so the welcome list can render a folder heading (#41).
+    sync_sessions_to_model_with_filter(store, model, "");
+}
+
+/// Like `sync_sessions_to_model` but filters sessions by name or host (case-insensitive).
+fn sync_sessions_to_model_with_filter(store: &ConfigStore, model: &VecModel<SessionInfo>, filter: &str) {
     let sessions = store.sessions();
+    let filter_lower = filter.to_lowercase();
+    let matches = |s: &Session| {
+        if filter.is_empty() {
+            return true;
+        }
+        s.name.to_lowercase().contains(&filter_lower)
+            || s.host.to_lowercase().contains(&filter_lower)
+    };
 
     // Ordered list of display groups:
     //  - "default" only when there are ungrouped sessions (group == "")
     //  - named groups: explicit folders (incl. empty ones) ∪ sessions' groups,
     //    de-duplicated, alphabetical.
-    let has_default = sessions.iter().any(|s| s.group.is_empty());
-    let mut named: Vec<String> = store
-        .groups()
-        .iter()
-        .cloned()
-        .chain(
-            sessions
-                .iter()
-                .filter(|s| !s.group.is_empty())
-                .map(|s| s.group.clone()),
-        )
-        .collect();
+    // When a search filter is active, only include groups that contain at
+    // least one matching session, so empty groups don't clutter the results.
+    let has_default = sessions.iter().any(|s| s.group.is_empty() && matches(s));
+    let mut named: Vec<String> = if filter.is_empty() {
+        store
+            .groups()
+            .iter()
+            .cloned()
+            .chain(
+                sessions
+                    .iter()
+                    .filter(|s| !s.group.is_empty())
+                    .map(|s| s.group.clone()),
+            )
+            .collect()
+    } else {
+        sessions
+            .iter()
+            .filter(|s| !s.group.is_empty() && matches(s))
+            .map(|s| s.group.clone())
+            .collect()
+    };
     named.sort_by_key(|g| g.to_lowercase());
     named.dedup();
 
@@ -2482,9 +2515,9 @@ fn sync_sessions_to_model(store: &ConfigStore, model: &VecModel<SessionInfo>) {
     let mut rows: Vec<SessionInfo> = Vec::new();
     for group in &display_groups {
         let mut gs: Vec<&Session> = if group == "default" {
-            sessions.iter().filter(|s| s.group.is_empty()).collect()
+            sessions.iter().filter(|s| s.group.is_empty() && matches(s)).collect()
         } else {
-            sessions.iter().filter(|s| &s.group == group).collect()
+            sessions.iter().filter(|s| &s.group == group && matches(s)).collect()
         };
         gs.sort_by_key(|s| s.name.to_lowercase());
 

@@ -1,6 +1,6 @@
 import { Theme } from "theme.slint";
 import { PrimaryButton, GhostButton } from "widgets.slint";
-import { ScrollView } from "std-widgets.slint";
+import { ScrollView, LineEdit } from "std-widgets.slint";
 
 export struct SessionInfo {
     id: string,
@@ -226,6 +226,7 @@ component CollapseButton inherits Rectangle {
 export component Welcome inherits Rectangle {
     in property <[SessionInfo]> sessions;
     in property <string> import-hint;        // result text after an import
+    in-out property <string> search-query;   // host search filter text
     callback new-session();
     callback import-ssh-config();
     callback connect-session(string);
@@ -237,10 +238,12 @@ export component Welcome inherits Rectangle {
     callback edit-group(string /* current-name */);
     callback delete-group(string /* name */);
     callback remove-session(string);
+    callback search-changed(string /* query */);
     // Compact mode (welcome-as-sidebar): drop the big title/tagline header and
     // tighten padding so the session list fits a narrow docked panel (#v0.5).
     in property <bool> compact;
     in property <string> dock-edge: "left";
+    in property <bool> lang-en: false;   // UI language for placeholder text
     property <bool> dock-horizontal: root.dock-edge == "left" || root.dock-edge == "right";
     // Collapse the sidebar to the edge icon strip (compact mode only) (#v0.5 M5).
     callback collapse();
@@ -337,6 +340,50 @@ export component Welcome inherits Rectangle {
                 if root.compact : PrimaryButton {
                     text: @tr("+ New session");
                     clicked => { root.new-session(); }
+                }
+
+                // Search box — filter sessions by name or host (#search-host).
+                Rectangle {
+                    height: 30px;
+                    border-radius: Theme.radius-sm;
+                    border-width: 1px;
+                    border-color: search-input.has-focus ? Theme.accent : Theme.border-subtle;
+                    background: Theme.bg-root;
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        padding-top: 4px;
+                        padding-bottom: 4px;
+                        spacing: 6px;
+                        Text {
+                            text: "\u{E8B6}";   // Material Icons "search"
+                            font-family: "Material Icons";
+                            color: Theme.text-muted;
+                            font-size: Theme.fs-sm;
+                            vertical-alignment: center;
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            background: transparent;
+                            search-input := TextInput {
+                                text <=> root.search-query;
+                                font-family: Theme.ui-font-family;
+                                font-size: Theme.fs-sm;
+                                color: Theme.text-primary;
+                                edited => { root.search-changed(root.search-query); }
+                            }
+                        }
+                        if root.search-query == "" : Text {
+                            text: root.lang-en
+                                ? "Search by name or host..."
+                                : "按名称或主机搜索...";
+                            font-family: Theme.ui-font-family;
+                            font-size: Theme.fs-sm;
+                            color: Theme.text-muted;
+                            vertical-alignment: center;
+                        }
+
+                    }
                 }
 
                 if sessions.length == 0 : Rectangle {

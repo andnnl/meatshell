@@ -559,6 +559,8 @@ export component AppWindow inherits Window {
 
     // --- Session list ------------------------------------------------------
     in property <[SessionInfo]> sessions;
+    in-out property <string> host-search-query;   // search filter for sessions
+    callback host-search-changed(string /* query */);
 
     // --- Tabs --------------------------------------------------------------
     in property <[TabInfo]> tabs;
@@ -896,6 +898,9 @@ export component AppWindow inherits Window {
                 dock-edge: root.welcome-sidebar-dock;
                 sessions: root.sessions;
                 import-hint: root.ssh-import-hint;
+                search-query <=> root.host-search-query;
+                lang-en: root.lang-en;
+                search-changed(q) => { root.host-search-changed(q); }
                 collapse => {
                     root.welcome-collapsed = true;
                     root.set-welcome-collapsed(true);
@@ -1236,6 +1241,9 @@ export component AppWindow inherits Window {
                     height: parent.height;
                     sessions: root.sessions;
                     import-hint: root.ssh-import-hint;
+                    search-query <=> root.host-search-query;
+                    lang-en: root.lang-en;
+                    search-changed(q) => { root.host-search-changed(q); }
                     new-session => { root.new-session-clicked(); }
                     import-ssh-config => { root.import-ssh-config(); }
                     connect-session(id) => { root.connect-session(id); }
